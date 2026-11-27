@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-bwvojaBX8CszrUcVOuk9cHA1f6x3ia8jNkjaDQ45Gwg=' 'sha256-XYQ9JXU7236QB8tKJRxIQ/bojaJf81Uat838LlOQDa8=' 'sha256-SkHKMnwnVlFxgF0rkYjpOz2ky7BG/0JQkjevhtbn9ss='; script-src-attr 'none'; style-src 'sha256-w281f3V305xy6qfIrGBNZFPjbPjXRN1dv1Z7c26Tfjg='; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="color-scheme" content="light dark"><title>知识交互实验</title><style>*{box-sizing:border-box}html{color-scheme:light dark;--bg:#fff;--fg:#222;--muted:#666;--line:#dedede;--accent:#416aa0;--secondary:#a35d2d;--third:#367b65;--panel:#f7f7f7;font:14px/1.55 system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--fg)}@media(prefers-color-scheme:dark){html{--bg:#202124;--fg:#eee;--muted:#b2b2b2;--line:#454545;--accent:#8eb7f1;--secondary:#efac73;--third:#80c7a8;--panel:#292a2d}}body{margin:0}main{max-width:780px;margin:auto;padding:12px 14px}h1{font-size:17px;margin:0 0 4px}p{margin:6px 0;overflow-wrap:anywhere}header p,.muted,details{color:var(--muted);font-size:12px}.formula{font-size:13px;padding:8px;background:var(--panel);border-radius:5px}#controls{display:grid;gap:7px;margin:9px 0}.control{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px;align-items:center}.control input{grid-column:1/-1;width:100%;margin:0;accent-color:var(--accent)}output{font-variant-numeric:tabular-nums}#presets{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}button{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--fg);padding:5px 9px;cursor:pointer}button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(125px,100%),1fr));gap:6px}.metric{border:1px solid var(--line);border-radius:6px;padding:7px;min-width:0;overflow-wrap:anywhere}.metric span{display:block;font-size:11px;color:var(--muted)}.metric strong{font-size:15px;font-variant-numeric:tabular-nums}svg{display:block;width:100%;height:auto;max-height:250px;margin:8px 0}svg text{font-size:10px;fill:var(--muted)}svg .axis{stroke:var(--line);fill:none}svg .line,svg .secondary,svg .tertiary{fill:none;stroke-width:2;stroke-linejoin:round;stroke:var(--accent)}svg .secondary{stroke:var(--secondary);stroke-dasharray:6 4}svg .tertiary{stroke:var(--third);stroke-dasharray:2 4}.matrix{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:10px 0}.cell{text-align:center;padding:6px;border:1px solid var(--line)}.nonzero{background:var(--panel)}.data-table{border-collapse:collapse;width:100%;font-size:12px;table-layout:fixed;overflow-wrap:anywhere}.data-table td,.data-table th{border:1px solid var(--line);padding:5px}details{border-top:1px solid var(--line);padding:8px 0}summary{cursor:pointer}#error{color:var(--secondary)}@media(max-width:420px){main{padding:8px}.metric strong{font-size:14px}}</style></head>
+<body data-pagefind-ignore="all"><main id="experiment" aria-labelledby="title"><header><h1 id="title">交互实验</h1><p id="description"></p></header><p id="formula" class="formula"></p><div id="controls"></div><div id="presets"></div><div id="metrics" aria-live="polite"></div><div id="visual"></div><p id="legend" class="muted"></p><details><summary>适用条件与思考题</summary><p id="boundary"></p><p id="question"></p><details><summary>参考解释</summary><p id="answer"></p></details></details><p id="error" role="alert" hidden></p><noscript>交互需要 JavaScript；请阅读原文中的公式和静态算例。</noscript></main><script>/* Pure deterministic teaching models. Shared by browser and Node checks. */
+(function (root) {
+  "use strict";
+  const range = (n, f) => Array.from({length:n}, (_,i)=>f(i));
+  function bounded(x,lo,hi) {
+    if (!Number.isFinite(x)||x<lo||x>hi) throw new RangeError("parameter out of bounds");
+    return x;
+  }
+  function entropy(p) {
+    bounded(p,0,1);
+    return [p,1-p].reduce((h,v)=>v ? h-v*Math.log2(v):h,0);
+  }
+  function channel(p,q) {
+    bounded(p,0,.5);bounded(q,0,.5);
+    const combined=p*(1-q)+(1-p)*q;
+    return {first:1-entropy(p),last:1-entropy(combined),combined};
+  }
+  const api={entropy,channel};
+  root.LabModels=api;
+})(globalThis);
+</script><script>"use strict";
+const M=globalThis.LabModels;
+const $=id=>document.getElementById(id);
+const make=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e};
+const fmt=n=>Number(n.toPrecision(5)).toString();
+const metrics=o=>{const box=make("div",undefined,"metrics");for(const [name,v] of Object.entries(o)){const cell=make("div",undefined,"metric");cell.append(make("span",name),make("strong",typeof v==="number"?fmt(v):v));box.append(cell)}return box};
+const plot=(series,caption)=>{
+  const ns="http://www.w3.org/2000/svg",s=document.createElementNS(ns,"svg");
+  s.setAttribute("viewBox","0 0 480 220");s.setAttribute("role","img");s.setAttribute("aria-label",caption);
+  const all=series.flat(),min=Math.min(0,...all),max=Math.max(0,...all),delta=max-min||1;
+  const node=(tag,attrs,text)=>{const n=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,v);if(text!==undefined)n.textContent=text;s.append(n);return n};
+  for(let i=0;i<=4;i++){const y=15+i*43;node("path",{d:"M52 "+y+" H466",class:"axis"});node("text",{x:47,y:y+4,"text-anchor":"end"},fmt(max-i*(max-min)/4))}
+  series.forEach((values,i)=>{if(values.length===1)node("circle",{cx:52,cy:15+172*(max-values[0])/delta,r:3,class:i===0?"line":i===1?"secondary":"tertiary"});else node("polyline",{points:values.map((v,j)=>[52+414*j/Math.max(1,values.length-1),15+172*(max-v)/delta].join(",")).join(" "),class:i===0?"line":i===1?"secondary":"tertiary"})});
+  node("text",{x:52,y:208},"0");node("text",{x:466,y:208,"text-anchor":"end"},String(series[0].length-1));
+  s.labSeries=series;return s;
+};
+const control=(key,label,min,max,step,value)=>({key,label,min,max,step,value});
+const labs=[
+{id:"channel",name:"信息熵与噪声信道",discipline:"数学 / 信息论",desc:"改变两级独立二元对称信道错误率，观察互信息。",controls:[control("p","第一级错误率",0,.5,.01,.1),control("q","第二级错误率",0,.5,.01,.2)],presets:[["无噪声",{p:0,q:0}],["完全噪声",{p:.1,q:.5}]],formula:"I=1−H₂(e)；e=p(1−q)+(1−p)q",boundary:"输入均匀、误码独立；互信息不等于语义价值。",question:"第二级错误率 0.5 时还能恢复多少输入信息？",answer:"此模型下输出独立于输入，互信息为零。",compute:p=>M.channel(p.p,p.q),render:(r,p)=>[metrics({"一级互信息 / bit":r.first,"两级互信息 / bit":r.last,"合成错误率":r.combined}),plot([Array.from({length:51},(_,i)=>M.channel(p.p,i/100).last)],"第二级误码率扫描"),"横轴 0–50 对应第二级误码率 0–0.5。"]}
+];
+</script><script>"use strict";
+(()=>{
+const params=new URLSearchParams(location.search),id=params.get("lab")??(labs.length===1?labs[0].id:null);
+const lab=labs.find(x=>x.id===id);
+const error=message=>{$("error").textContent=message;$("error").hidden=false};
+if(!lab){$("title").textContent="实验不可用";error("请选择已注册实验。");return}
+const defaults=Object.fromEntries(lab.controls.map(c=>[c.key,c.value]));
+let state={...defaults};
+const inputs=new Map();
+for(const [k,v] of [["title",lab.name],["description",lab.desc],["formula",lab.formula],["boundary",lab.boundary],["question",lab.question],["answer",lab.answer]])$(k).textContent=v;
+document.title=lab.name;
+function render(){
+ try{
+  const [m,visual,legend]=lab.render(lab.compute(state),state);
+  $("metrics").replaceChildren(m);$("visual").replaceChildren(visual);$("legend").textContent=legend;
+  $("error").hidden=true;
+ }catch(e){error("计算失败，请重置参数。");$("metrics").replaceChildren();$("visual").replaceChildren();$("legend").textContent=""}
+}
+function apply(p){state={...defaults,...p};for(const [key,{input,out}] of inputs){input.value=state[key];out.value=String(state[key])}render()}
+for(const c of lab.controls){
+ const box=make("div",undefined,"control"),label=make("label",c.label),input=make("input"),out=make("output");
+ input.type="range";input.min=c.min;input.max=c.max;input.step=c.step;input.id="parameter-"+c.key;label.htmlFor=input.id;out.htmlFor=input.id;input.value=c.value;out.value=String(c.value);
+ input.addEventListener("input",()=>{state[c.key]=input.valueAsNumber;out.value=String(state[c.key]);render()});
+ inputs.set(c.key,{input,out});box.append(label,out,input);$("controls").append(box);
+}
+for(const [name,p] of lab.presets){const btn=make("button",name);btn.type="button";btn.onclick=()=>apply(p);$("presets").append(btn)}
+const reset=make("button","重置");reset.type="button";reset.onclick=()=>apply(defaults);$("presets").append(reset);
+render();
+})();
+</script></body></html>

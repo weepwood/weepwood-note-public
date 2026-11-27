@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-WEWn/B4oiek3zFTov8UEr3G1MsLYhHSTGfrcVpI+i38=' 'sha256-Fcj6FLD71pOPNmQqj4IGdn7RfEnyifQmUjKqjki/ML0=' 'sha256-SkHKMnwnVlFxgF0rkYjpOz2ky7BG/0JQkjevhtbn9ss='; script-src-attr 'none'; style-src 'sha256-w281f3V305xy6qfIrGBNZFPjbPjXRN1dv1Z7c26Tfjg='; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="color-scheme" content="light dark"><title>知识交互实验</title><style>*{box-sizing:border-box}html{color-scheme:light dark;--bg:#fff;--fg:#222;--muted:#666;--line:#dedede;--accent:#416aa0;--secondary:#a35d2d;--third:#367b65;--panel:#f7f7f7;font:14px/1.55 system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--fg)}@media(prefers-color-scheme:dark){html{--bg:#202124;--fg:#eee;--muted:#b2b2b2;--line:#454545;--accent:#8eb7f1;--secondary:#efac73;--third:#80c7a8;--panel:#292a2d}}body{margin:0}main{max-width:780px;margin:auto;padding:12px 14px}h1{font-size:17px;margin:0 0 4px}p{margin:6px 0;overflow-wrap:anywhere}header p,.muted,details{color:var(--muted);font-size:12px}.formula{font-size:13px;padding:8px;background:var(--panel);border-radius:5px}#controls{display:grid;gap:7px;margin:9px 0}.control{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px;align-items:center}.control input{grid-column:1/-1;width:100%;margin:0;accent-color:var(--accent)}output{font-variant-numeric:tabular-nums}#presets{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}button{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--fg);padding:5px 9px;cursor:pointer}button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(125px,100%),1fr));gap:6px}.metric{border:1px solid var(--line);border-radius:6px;padding:7px;min-width:0;overflow-wrap:anywhere}.metric span{display:block;font-size:11px;color:var(--muted)}.metric strong{font-size:15px;font-variant-numeric:tabular-nums}svg{display:block;width:100%;height:auto;max-height:250px;margin:8px 0}svg text{font-size:10px;fill:var(--muted)}svg .axis{stroke:var(--line);fill:none}svg .line,svg .secondary,svg .tertiary{fill:none;stroke-width:2;stroke-linejoin:round;stroke:var(--accent)}svg .secondary{stroke:var(--secondary);stroke-dasharray:6 4}svg .tertiary{stroke:var(--third);stroke-dasharray:2 4}.matrix{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:10px 0}.cell{text-align:center;padding:6px;border:1px solid var(--line)}.nonzero{background:var(--panel)}.data-table{border-collapse:collapse;width:100%;font-size:12px;table-layout:fixed;overflow-wrap:anywhere}.data-table td,.data-table th{border:1px solid var(--line);padding:5px}details{border-top:1px solid var(--line);padding:8px 0}summary{cursor:pointer}#error{color:var(--secondary)}@media(max-width:420px){main{padding:8px}.metric strong{font-size:14px}}</style></head>
+<body data-pagefind-ignore="all"><main id="experiment" aria-labelledby="title"><header><h1 id="title">交互实验</h1><p id="description"></p></header><p id="formula" class="formula"></p><div id="controls"></div><div id="presets"></div><div id="metrics" aria-live="polite"></div><div id="visual"></div><p id="legend" class="muted"></p><details><summary>适用条件与思考题</summary><p id="boundary"></p><p id="question"></p><details><summary>参考解释</summary><p id="answer"></p></details></details><p id="error" role="alert" hidden></p><noscript>交互需要 JavaScript；请阅读原文中的公式和静态算例。</noscript></main><script>/* Pure deterministic teaching models. Shared by browser and Node checks. */
+(function (root) {
+  "use strict";
+  const range = (n, f) => Array.from({length:n}, (_,i)=>f(i));
+  function bounded(x,lo,hi) {
+    if (!Number.isFinite(x)||x<lo||x>hi) throw new RangeError("parameter out of bounds");
+    return x;
+  }
+  function oscillatorEnergy(h,steps){
+    bounded(h,.05,1.5);bounded(steps,1,40);
+    if(!Number.isInteger(steps))throw new RangeError("integer steps");
+    let q=1,p=0,u=1,v=0;
+    const explicit=[.5],symplectic=[.5],modified=[.5];
+    for(let n=0;n<steps;n++){
+      [q,p]=[q+h*p,p-h*q];
+      v-=h*u;u+=h*v;
+      explicit.push((q*q+p*p)/2);
+      symplectic.push((u*u+v*v)/2);
+      modified.push((u*u+v*v-h*u*v)/2);
+    }
+    return {explicit,symplectic,modified,exact:range(steps+1,()=>.5),amplification:1+h*h};
+  }
+  // Smooth polynomial example: evaluate both composite rules, not the error formulas.
+  const api={oscillatorEnergy};
+  root.LabModels=api;
+})(globalThis);
+</script><script>"use strict";
+const M=globalThis.LabModels;
+const $=id=>document.getElementById(id);
+const make=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;if(cls)e.className=cls;return e};
+const fmt=n=>Number(n.toPrecision(5)).toString();
+const metrics=o=>{const box=make("div",undefined,"metrics");for(const [name,v] of Object.entries(o)){const cell=make("div",undefined,"metric");cell.append(make("span",name),make("strong",typeof v==="number"?fmt(v):v));box.append(cell)}return box};
+const plot=(series,caption)=>{
+  const ns="http://www.w3.org/2000/svg",s=document.createElementNS(ns,"svg");
+  s.setAttribute("viewBox","0 0 480 220");s.setAttribute("role","img");s.setAttribute("aria-label",caption);
+  const all=series.flat(),min=Math.min(0,...all),max=Math.max(0,...all),delta=max-min||1;
+  const node=(tag,attrs,text)=>{const n=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,v);if(text!==undefined)n.textContent=text;s.append(n);return n};
+  for(let i=0;i<=4;i++){const y=15+i*43;node("path",{d:"M52 "+y+" H466",class:"axis"});node("text",{x:47,y:y+4,"text-anchor":"end"},fmt(max-i*(max-min)/4))}
+  series.forEach((values,i)=>{if(values.length===1)node("circle",{cx:52,cy:15+172*(max-values[0])/delta,r:3,class:i===0?"line":i===1?"secondary":"tertiary"});else node("polyline",{points:values.map((v,j)=>[52+414*j/Math.max(1,values.length-1),15+172*(max-v)/delta].join(",")).join(" "),class:i===0?"line":i===1?"secondary":"tertiary"})});
+  node("text",{x:52,y:208},"0");node("text",{x:466,y:208,"text-anchor":"end"},String(series[0].length-1));
+  s.labSeries=series;return s;
+};
+const control=(key,label,min,max,step,value)=>({key,label,min,max,step,value});
+const labs=[
+{id:"oscillator-energy",name:"振子与数值能量",discipline:"物理 / 数值分析",desc:"单位无阻尼振子：显式 Euler 与辛 Euler 的能量对照。",controls:[control("h","归一化步长",.05,1.5,.05,.5),control("steps","时间步数",1,40,1,10)],presets:[["小步长",{h:.1,steps:20}],["明显偏差",{h:.5,steps:10}]],formula:"E=(q²+p²)/2；显式 E[n+1]=(1+h²)E[n]",boundary:"单位质量、单位刚度、无阻尼，初始位置 1、动量 0；比较数值方法，不是实测。辛方法保持修正二次型，不精确保真能量。用相对初始能量的常用对数同轴显示，零表示能量等于初值，避免指数增长掩盖细节。",question:"为何显式 Euler 的能量增长不是外力做功？",answer:"连续能量守恒；显式离散更新的平方和每步乘 1+h²。",compute:p=>M.oscillatorEnergy(p.h,p.steps),render:r=>[metrics({"显式末能量":r.explicit.at(-1),"辛方法末能量":r.symplectic.at(-1),"显式能量乘子":r.amplification,"修正能量最大偏差":Math.max(...r.modified.map(v=>Math.abs(v-.5)))}),plot([r.explicit,r.symplectic,r.exact].map(a=>a.map(e=>Math.log10(e/.5))),"能量比常用对数：显式、辛方法、精确解"),"蓝实线：显式 Euler；橙虚线：辛 Euler；第三条线：精确解。纵轴 log₁₀(E/E₀)，横轴步数；指标仍显示真实能量值。"]}
+];
+</script><script>"use strict";
+(()=>{
+const params=new URLSearchParams(location.search),id=params.get("lab")??(labs.length===1?labs[0].id:null);
+const lab=labs.find(x=>x.id===id);
+const error=message=>{$("error").textContent=message;$("error").hidden=false};
+if(!lab){$("title").textContent="实验不可用";error("请选择已注册实验。");return}
+const defaults=Object.fromEntries(lab.controls.map(c=>[c.key,c.value]));
+let state={...defaults};
+const inputs=new Map();
+for(const [k,v] of [["title",lab.name],["description",lab.desc],["formula",lab.formula],["boundary",lab.boundary],["question",lab.question],["answer",lab.answer]])$(k).textContent=v;
+document.title=lab.name;
+function render(){
+ try{
+  const [m,visual,legend]=lab.render(lab.compute(state),state);
+  $("metrics").replaceChildren(m);$("visual").replaceChildren(visual);$("legend").textContent=legend;
+  $("error").hidden=true;
+ }catch(e){error("计算失败，请重置参数。");$("metrics").replaceChildren();$("visual").replaceChildren();$("legend").textContent=""}
+}
+function apply(p){state={...defaults,...p};for(const [key,{input,out}] of inputs){input.value=state[key];out.value=String(state[key])}render()}
+for(const c of lab.controls){
+ const box=make("div",undefined,"control"),label=make("label",c.label),input=make("input"),out=make("output");
+ input.type="range";input.min=c.min;input.max=c.max;input.step=c.step;input.id="parameter-"+c.key;label.htmlFor=input.id;out.htmlFor=input.id;input.value=c.value;out.value=String(c.value);
+ input.addEventListener("input",()=>{state[c.key]=input.valueAsNumber;out.value=String(state[c.key]);render()});
+ inputs.set(c.key,{input,out});box.append(label,out,input);$("controls").append(box);
+}
+for(const [name,p] of lab.presets){const btn=make("button",name);btn.type="button";btn.onclick=()=>apply(p);$("presets").append(btn)}
+const reset=make("button","重置");reset.type="button";reset.onclick=()=>apply(defaults);$("presets").append(reset);
+render();
+})();
+</script></body></html>
